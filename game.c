@@ -3,8 +3,6 @@
 #include "gameInput.h"
 #include "gameAI.h"
 #include "variableManagement.h"
-#include "graphic/graphicGame.h"
-
 
 
 void initializePlayers(Player_t * player_and_AI)
@@ -141,8 +139,6 @@ void changePlayerOrder(Player_t * player_and_AI, int index) //index of the playe
 
 void startRound(Player_t * player_and_AI, Card_t all_player_and_AI_cards[4][8], char trump)
 {
-
-
   Card_t table_cards[4]; //cards placed in each trick
   Card_t played_card; //variable that contain the current card
   int winner_index; //winner's index in player_and_AI
@@ -162,91 +158,88 @@ void startRound(Player_t * player_and_AI, Card_t all_player_and_AI_cards[4][8], 
 
     for(j = 0; j < 4; j++) //for each player
     {
-          printf("Player %i\n", player_and_AI[j].id);
-          int can_play_card = 0; //variable to check if the player can use the card he chosed
-          int card_index;
-          Card_t *current_hand; //current player's hand
+      printf("Player %i\n", player_and_AI[j].id);
+      int can_play_card = 0; //variable to check if the player can use the card he chosed
+      int card_index;
+      Card_t *current_hand; //current player's hand
 
-          current_hand = all_player_and_AI_cards[player_and_AI[j].id];
+      current_hand = all_player_and_AI_cards[player_and_AI[j].id];
 
-          if(player_and_AI[j].id == 0) //if player is not an AI
+      if(player_and_AI[j].id == 0) //if player is not an AI
+      {
+        do
+        {
+          /*In arrays all_player_and_AI_cards and last_played_cards_colors, indexes do not match with player_and_AI indexes.
+          It matches player_and_AI[j].id, that is because we change the order in player_and_AI.*/
+          played_card = askCard(current_hand, 8-i); //asking the player to choose a card
+          if(j > 0)
           {
-            do
+            can_play_card = canPlayCard(table_cards[0], player_and_AI[0].id, played_card, player_and_AI[j].id,
+                                        current_hand, 8-i, max_card_value, trump);
+                                        //checks if the player can use the card he chosed
+
+          } else can_play_card = 1;
+
+        } while(!can_play_card); //loop until the player can play the card
+
+      } else { //if AI
+        Card_t playable_cards[8]; //array that contain playable cards
+        int playable_cards_length = 0;
+        int k; //counter
+
+        if(j > 0) //if not first player
+        {
+
+          for (k = 0; k < 8 - i; k++)
+          {
+            if(canPlayCard(table_cards[0], player_and_AI[0].id, current_hand[k], player_and_AI[j].id,
+                           current_hand, 8-i, max_card_value, trump))
             {
-              /*In arrays all_player_and_AI_cards and last_played_cards_colors, indexes do not match with player_and_AI indexes.
-              It matches player_and_AI[j].id, that is because we change the order in player_and_AI.*/
-
-              played_card = graphicPlayerCardChoice(all_player_and_AI_cards[0], table_cards); //asking the player to choose a card
-              if(j > 0)
-              {
-                can_play_card = canPlayCard(table_cards[0], player_and_AI[0].id, played_card, player_and_AI[j].id,
-                                            current_hand, 8-i, max_card_value, trump);
-                                            //checks if the player can use the card he chosed
-
-              } else can_play_card = 1;
-
-            } while(!can_play_card); //loop until the player can play the card
-
-          } else { //if AI
-            Card_t playable_cards[8]; //array that contain playable cards
-            int playable_cards_length = 0;
-            int k; //counter
-
-            if(j > 0) //if not first player
-            {
-
-              for (k = 0; k < 8 - i; k++)
-              {
-                if(canPlayCard(table_cards[0], player_and_AI[0].id, current_hand[k], player_and_AI[j].id,
-                               current_hand, 8-i, max_card_value, trump))
-                {
-                   playable_cards[playable_cards_length] = current_hand[k];
-                   playable_cards_length++;
-                }
-              }
-
-              played_card = askAICard(table_cards, playable_cards_length, playable_cards, j, max_card_value, trump);
-
-            } else {
-              played_card = askAICard(table_cards, 8-i, current_hand, j, max_card_value, trump);
+               playable_cards[playable_cards_length] = current_hand[k];
+               playable_cards_length++;
             }
           }
 
-          if((played_card.color == trump || trump == 'A') && played_card.trump_card_value > max_card_value)
-          {
-            max_card_value = played_card.trump_card_value;
-          }
+          played_card = askAICard(table_cards, playable_cards_length, playable_cards, j, max_card_value, trump);
 
-          table_cards[j] = played_card; //adding the card on the table
+        } else {
+          played_card = askAICard(table_cards, 8-i, current_hand, j, max_card_value, trump);
+        }
+      }
 
-          printf("%c%c\n\n", played_card.color, played_card.name); //TEMPORARY
+      if((played_card.color == trump || trump == 'A') && played_card.trump_card_value > max_card_value)
+      {
+        max_card_value = played_card.trump_card_value;
+      }
 
-          for (card_index = 0; card_index < 8-i; card_index++)
-              {
-                Card_t card = all_player_and_AI_cards[player_and_AI[j].id][card_index]; //getting the played card index in player's hand.
+      table_cards[j] = played_card; //adding the card on the table
 
-                if(card.color == played_card.color && card.name == played_card.name)
-                {
-                  break; //if it matches we stop increasing card_index
-                }
-          }
+      printf("%c%c\n\n", played_card.color, played_card.name); //TEMPORARY
 
-          if((played_card.color == trump || trump == 'A') && (played_card.name == 'K' || played_card.name == 'Q')) //check if belote/rebelote
-          {
-                player_and_AI[j].belote += 1;
-                if(player_and_AI[j].belote % 2 == 1)
-                {
-                  printf("Belote\n");
-                } else printf("Rebelote\n");
-          }
+      for (card_index = 0; card_index < 8-i; card_index++)
+      {
+        Card_t card = all_player_and_AI_cards[player_and_AI[j].id][card_index]; //getting the played card index in player's hand.
 
-          shiftCards(8-i, all_player_and_AI_cards[player_and_AI[j].id], card_index); //we remove the card in the player's hand
+        if(card.color == played_card.color && card.name == played_card.name)
+        {
+          break; //if it matches we stop increasing card_index
+        }
+      }
 
+      if((played_card.color == trump || trump == 'A') && (played_card.name == 'K' || played_card.name == 'Q')) //check if belote/rebelote
+      {
+        player_and_AI[j].belote += 1;
+        if(player_and_AI[j].belote % 2 == 1)
+        {
+          printf("Belote\n");
+        } else printf("Rebelote\n");
+      }
 
+      shiftCards(8-i, all_player_and_AI_cards[player_and_AI[j].id], card_index); //we remove the card in the player's hand
+      displayTableCards(table_cards); //displaying table cards.
 
 
     }
-    displayAfterPLayerChoicee(all_player_and_AI_cards[0], table_cards);
     winner_index = getWinner(player_and_AI, table_cards, trump, i);
 
     changePlayerOrder(player_and_AI, winner_index);
@@ -291,7 +284,13 @@ char startPasses(Card_t * deck_of_32_cards, Card_t all_player_and_AI_cards[4][8]
 
       if (player_and_AI[i].bet > 0) //returned 0 means player has skipped
       {
-        printf("Bet : %i\n", player_and_AI[i].bet);
+        if(max_bet < 152)
+        {
+          printf("Bet : %i\n", player_and_AI[i].bet);
+        } else {
+          printf("Bet : Capot");
+        }
+
 
         if(player_and_AI[i].id == 0)
         {
@@ -305,7 +304,7 @@ char startPasses(Card_t * deck_of_32_cards, Card_t all_player_and_AI_cards[4][8]
 
         printf("Trump : %c\n\n", round_trump);
 
-        if(round_trump == 160) return round_trump; //If the trump the maximum the loop is not necessary anymore
+        if(max_bet == 152) return round_trump; //If bet is the maximum the loop is not necessary anymore
         skip_counter = 0; //reset the counter if someone bet
         has_someone_bet = 1;
 
